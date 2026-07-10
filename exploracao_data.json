@@ -1,0 +1,48 @@
+{
+    "paradise": {
+        "titulo": "Exploração: Paradise",
+        "cor": 13938487,
+        "itens": [
+            {
+                "nome": "Ruínas",
+                "chance": 80,
+                "tipo": "normal",
+                "msg_sim": "parece ter algo valioso nessa ilha.",
+                "msg_nao": "não parece ter nada de valioso nessa ilha."
+            },
+            {
+                "nome": "Contratação",
+                "chance": 30,
+                "tipo": "prof_profissional"
+            },
+            {
+                "nome": "Poneglyph",
+                "chance": 25,
+                "tipo": "poneglyph"
+            }
+        ]
+    },
+    "blues": {
+        "titulo": "Exploração: Blues",
+        "cor": 4620980,
+        "itens": [
+            {
+                "nome": "Ruínas",
+                "chance": 75,
+                "tipo": "normal",
+                "msg_sim": "parece ter algo valioso nessa ilha.",
+                "msg_nao": "não parece ter nada de valioso nessa ilha."
+            },
+            {
+                "nome": "Contratação",
+                "chance": 30,
+                "tipo": "prof_amador"
+            },
+            {
+                "nome": "Poneglyph",
+                "chance": 1,
+                "tipo": "poneglyph"
+            }
+        ]
+    }
+}
