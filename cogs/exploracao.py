@@ -255,48 +255,6 @@ class Exploracao(commands.Cog):
     # ==========================
     # 🛠️ COMANDOS DE ADMINISTRAÇÃO
     # ==========================
-    admin_group = app_commands.Group(name="admin", description="Configurações do RPG")
-
-    @admin_group.command(name="criar_tier", description="Cria uma nova região/mar")
-    async def criar_tier(self, interaction: discord.Interaction, id_tier: str, titulo: str, cor_hex: str):
-        if id_tier in self.dados:
-            await interaction.response.send_message("❌ Tier já existe!", ephemeral=True)
-            return
-        try: cor_int = int(cor_hex.replace("#", ""), 16)
-        except: cor_int = 0xFFFFFF
-
-        self.dados[id_tier] = {"titulo": titulo, "cor": cor_int, "itens": []}
-        self.salvar_dados(self.dados)
-        await interaction.response.send_message(f"✅ Região **{id_tier}** criada!", ephemeral=True)
-
-    @admin_group.command(name="add_item", description="Adiciona uma variável a um mar")
-    @app_commands.choices(tipo=[
-        app_commands.Choice(name="Normal (Sim/Não)", value="normal"),
-        app_commands.Choice(name="Módulo: Prof/Contratado (Amador)", value="prof_amador"),
-        app_commands.Choice(name="Módulo: Prof/Contratado (Profissional)", value="prof_profissional"),
-        app_commands.Choice(name="Módulo: Poneglyph", value="poneglyph")
-    ])
-    @app_commands.autocomplete(tier=tier_autocomplete)
-    async def add_item(self, interaction: discord.Interaction, tier: str, nome: str, chance: float, tipo: str, msg_sim: str = "", msg_nao: str = ""):
-        if tier not in self.dados:
-            await interaction.response.send_message("❌ Tier não encontrado!", ephemeral=True)
-            return
-        
-        novo_item = {"nome": nome, "chance": chance, "tipo": tipo, "msg_sim": msg_sim, "msg_nao": msg_nao}
-        self.dados[tier]["itens"].append(novo_item)
-        self.salvar_dados(self.dados)
-        await interaction.response.send_message(f"✅ Variável **{nome}** adicionada!", ephemeral=True)
-
-    @admin_group.command(name="excluir_tier", description="Exclui um mar/região do sistema")
-    @app_commands.autocomplete(tier=tier_autocomplete)
-    async def excluir_tier(self, interaction: discord.Interaction, tier: str):
-        if tier not in self.dados:
-            await interaction.response.send_message("❌ Tier não encontrado!", ephemeral=True)
-            return
-        
-        del self.dados[tier]
-        self.salvar_dados(self.dados)
-        await interaction.response.send_message(f"🗑️ A região **{tier}** foi excluída!", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Exploracao(bot))

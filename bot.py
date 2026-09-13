@@ -1,8 +1,10 @@
 import discord
 from discord.ext import commands
-import traceback # <--- Ferramenta de raio-x de erros adicionada
+import traceback
+from dotenv import load_dotenv # <--- Ferramenta de raio-x de erros adicionada
 
 import os
+load_dotenv()
 TOKEN = os.getenv("TOKEN_DISCORD")
 
 class BotBase(commands.Bot):
@@ -27,6 +29,14 @@ class BotBase(commands.Bot):
             print("✅ Cog 'exploracao' carregado com sucesso.")
         except Exception as e:
             print("❌ Erro FATAL ao carregar o cog 'exploracao':")
+            traceback.print_exc()
+
+        # 3. CARREGA O PAINEL DE REGIÕES (/regioes)
+        try:
+            await self.load_extension("cogs.regioes_admin")
+            print("✅ Cog 'regioes_admin' carregado com sucesso.")
+        except Exception as e:
+            print("❌ Erro FATAL ao carregar o cog 'regioes_admin':")
             traceback.print_exc()
 
         # SINCRONIZA TODOS OS COMANDOS
