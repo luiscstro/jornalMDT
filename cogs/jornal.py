@@ -5,6 +5,7 @@ import datetime
 import database as db
 import regioes_db as rdb
 import regioes_engine as rengine
+import cacadas_db as cdb
 from cogs.permissoes import is_allowed_role
 
 # --- CONFIGURAÇÕES ---
@@ -29,6 +30,7 @@ class JornalCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         rdb.init_db()
+        cdb.init_db()
         self.postar_noticias_semanais.start()
 
     def cog_unload(self):
@@ -36,11 +38,12 @@ class JornalCog(commands.Cog):
 
     def gerar_boletins_completos(self, teste=False):
         """Gera o dicionário {nome_regiao: texto} a partir das regiões
-        cadastradas dinamicamente (ativas), na ordem configurada."""
+        cadastradas dinamicamente (ativas), na ordem configurada.
+        Retorna (boletins, procurados_usados)."""
         return rengine.gerar_todos_boletins(teste=teste)
 
     async def enviar_boletins(self, canal, teste=False):
-        boletins = self.gerar_boletins_completos(teste=teste)
+        boletins, procurados_usados = self.gerar_boletins_completos(teste=teste)
 
         async def enviar_com_imagem(texto):
             # O Discord exige um novo objeto File para cada mensagem enviada
@@ -49,6 +52,11 @@ class JornalCog(commands.Cog):
 
         for texto in boletins.values():
             await enviar_com_imagem(texto)
+
+        if not teste:
+            # Edição oficial: esses nomes ficam bloqueados pro /procurado
+            # até a próxima edição oficial ser postada.
+            cdb.definir_jornal_atual(procurados_usados)
 
     @tasks.loop(time=HORA_ATUALIZACAO_UTC)
     async def postar_noticias_semanais(self):

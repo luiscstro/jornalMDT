@@ -31,10 +31,12 @@ def _sortear_local(locais: list, ja_usados: set, forcar_unico: bool):
     return escolhido["nome"]
 
 
-def gerar_boletim_regiao(regiao: dict, pool_procurados: list, teste: bool = False) -> str:
+def gerar_boletim_regiao(regiao: dict, pool_procurados: list, teste: bool = False) -> tuple:
     """Gera o texto de UMA região a partir da configuração salva no banco.
     `pool_procurados` é consumido (pop) para não repetir entre regiões,
-    igual ao comportamento original."""
+    igual ao comportamento original.
+
+    Retorna (texto, nome_procurado_usado_ou_None)."""
 
     regiao_id = regiao["id"]
     nome_regiao = regiao["nome"]
@@ -46,6 +48,7 @@ def gerar_boletim_regiao(regiao: dict, pool_procurados: list, teste: bool = Fals
     introducao = regiao["introducao_template"].format(regiao=nome_regiao)
 
     linhas = []
+    nome_usado = None
 
     # --- grupos de template (rumores, mestre, nakama, tesouro, etc) ---
     for grupo in rdb.listar_grupos_template(regiao_id):
@@ -62,6 +65,7 @@ def gerar_boletim_regiao(regiao: dict, pool_procurados: list, teste: bool = Fals
     if regiao["tem_procurado"]:
         if pool_procurados:
             nome_p, tipo_p = pool_procurados.pop(0)
+            nome_usado = nome_p
             local_p = _sortear_local(locais, ja_usados, False) or "???"
             if tipo_p == "Marinheiro":
                 texto_p = regiao["procurado_marinheiro_texto"].format(local=local_p, nome=nome_p)
@@ -92,18 +96,22 @@ def gerar_boletim_regiao(regiao: dict, pool_procurados: list, teste: bool = Fals
     if regiao["mencoes_texto"]:
         partes += ["", regiao["mencoes_texto"]]
 
-    return "\n".join(p for p in partes if p is not None) + "\n"
+    return "\n".join(p for p in partes if p is not None) + "\n", nome_usado
 
 
-def gerar_todos_boletins(teste: bool = False) -> dict:
+def gerar_todos_boletins(teste: bool = False) -> tuple:
     """Gera o texto de todas as regiões ativas, na ordem configurada.
-    Retorna {nome_regiao: texto}."""
+    Retorna ({nome_regiao: texto}, [nomes_de_procurados_usados_nesta_edição])."""
     regioes = rdb.listar_regioes(apenas_ativas=True)
 
     pool_procurados = db.listar_procurados()
     random.shuffle(pool_procurados)
 
     boletins = {}
+    procurados_usados = []
     for regiao in regioes:
-        boletins[regiao["nome"]] = gerar_boletim_regiao(regiao, pool_procurados, teste=teste)
-    return boletins
+        texto, nome_usado = gerar_boletim_regiao(regiao, pool_procurados, teste=teste)
+        boletins[regiao["nome"]] = texto
+        if nome_usado:
+            procurados_usados.append(nome_usado)
+    return boletins, procurados_usados

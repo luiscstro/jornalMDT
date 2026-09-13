@@ -39,6 +39,14 @@ class BotBase(commands.Bot):
             print("❌ Erro FATAL ao carregar o cog 'regioes_admin':")
             traceback.print_exc()
 
+        # 4. CARREGA A CAÇA A PROCURADOS (/procurado)
+        try:
+            await self.load_extension("cogs.procurado")
+            print("✅ Cog 'procurado' carregado com sucesso.")
+        except Exception as e:
+            print("❌ Erro FATAL ao carregar o cog 'procurado':")
+            traceback.print_exc()
+
         # SINCRONIZA TODOS OS COMANDOS
         print("--- Sincronizando Comandos Slash ---")
         try:
