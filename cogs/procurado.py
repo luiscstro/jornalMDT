@@ -1,12 +1,13 @@
 """
 procurado.py
 -------------
-Sistema de caça a procurados: /procurado sorteia um procurado (pirata ou
-marinheiro) disponível e diz em qual ilha do mar escolhido ele está. Uma vez
-sorteado, o procurado fica travado por 2 semanas (cacadas_db.DIAS_TRAVA) e não
-pode ser sorteado de novo até o prazo passar. Procurados que estão na edição
-atual do jornal também ficam de fora, pra não repetir o mesmo alvo em dois
-lugares ao mesmo tempo.
+Sistema de caça a procurados: em /procurado quem executa escolhe QUAL
+procurado (pirata ou marinheiro) vai caçar e EM QUAL mar; só a ilha dentro
+daquele mar é sorteada (mesma chance entre todas). Uma vez escolhido, o
+procurado fica travado por 2 semanas (cacadas_db.DIAS_TRAVA) e não pode ser
+escolhido de novo até o prazo passar. Procurados que estão na edição atual
+do jornal também ficam de fora, pra não repetir o mesmo alvo em dois lugares
+ao mesmo tempo.
 """
 
 import random
@@ -29,6 +30,16 @@ async def mar_autocomplete(interaction: discord.Interaction, current: str) -> li
     return [app_commands.Choice(name=nome, value=nome) for nome in filtradas[:25]]
 
 
+async def procurado_disponivel_autocomplete(interaction: discord.Interaction, current: str) -> list:
+    current = (current or "").lower()
+    disponiveis = [
+        (nome, tipo) for (nome, tipo) in db.listar_procurados()
+        if not cdb.procurado_esta_travado(nome) and not cdb.nome_no_jornal_atual(nome)
+    ]
+    filtrados = [(nome, tipo) for (nome, tipo) in disponiveis if current in nome.lower()]
+    return [app_commands.Choice(name=f"{nome} ({tipo})", value=nome) for (nome, tipo) in filtrados[:25]]
+
+
 async def cacada_ativa_autocomplete(interaction: discord.Interaction, current: str) -> list:
     ativas = cdb.buscar_cacadas_ativas_por_nome(current)
     return [
@@ -42,11 +53,11 @@ class ProcuradoCog(commands.Cog):
         self.bot = bot
         cdb.init_db()
 
-    @app_commands.command(name="procurado", description="Sorteia um procurado disponível e a ilha dele num mar.")
+    @app_commands.command(name="procurado", description="Registra a caça a um procurado escolhido e sorteia a ilha dele num mar.")
     @is_allowed_role()
-    @app_commands.describe(mar="Em qual mar procurar.")
-    @app_commands.autocomplete(mar=mar_autocomplete)
-    async def procurado_slash(self, interaction: discord.Interaction, mar: str):
+    @app_commands.describe(procurado="Qual procurado caçar.", mar="Em qual mar procurar.")
+    @app_commands.autocomplete(procurado=procurado_disponivel_autocomplete, mar=mar_autocomplete)
+    async def procurado_slash(self, interaction: discord.Interaction, procurado: str, mar: str):
         await interaction.response.defer()
 
         regiao = rdb.obter_regiao_por_nome(mar)
@@ -68,19 +79,22 @@ class ProcuradoCog(commands.Cog):
                 await interaction.followup.send("❌ Não há nenhum procurado cadastrado na planilha.", ephemeral=True)
             return
 
-        candidatos = [
-            (nome, tipo) for (nome, tipo) in todos_procurados
-            if not cdb.procurado_esta_travado(nome) and not cdb.nome_no_jornal_atual(nome)
-        ]
-
-        if not candidatos:
-            await interaction.followup.send(
-                "❌ Nenhum procurado disponível pra caça agora (todos estão travados ou na edição atual do jornal).",
-                ephemeral=True,
-            )
+        mapa_procurados = {nome.lower(): (nome, tipo) for nome, tipo in todos_procurados}
+        entrada = mapa_procurados.get(procurado.lower())
+        if not entrada:
+            await interaction.followup.send(f"❌ **{procurado}** não consta na planilha.", ephemeral=True)
             return
 
-        nome_p, tipo_p = random.choice(candidatos)
+        nome_p, tipo_p = entrada
+
+        if cdb.procurado_esta_travado(nome_p):
+            await interaction.followup.send(f"❌ **{nome_p}** já está sendo caçado por alguém — a trava ainda não acabou.", ephemeral=True)
+            return
+
+        if cdb.nome_no_jornal_atual(nome_p):
+            await interaction.followup.send(f"❌ **{nome_p}** está na edição atual do jornal e não pode ser caçado agora.", ephemeral=True)
+            return
+
         local_p = random.choice(locais)["nome"]
 
         cacada = cdb.registrar_cacada(
