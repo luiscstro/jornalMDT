@@ -17,7 +17,7 @@ from discord.ext import commands
 
 import regioes_db as rdb
 import regioes_engine as rengine
-from permissoes import is_allowed_role, usuario_permitido
+from cogs.permissoes import is_allowed_role, usuario_permitido
 
 EMOJI_ON = "✅"
 EMOJI_OFF = "⬛"
