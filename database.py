@@ -8,17 +8,31 @@ ESCOPOS = [
     "https://www.googleapis.com/auth/drive"
 ]
 
+_ultimo_erro_conexao = None
+
+
+def obter_ultimo_erro_conexao():
+    """Retorna a mensagem da última falha ao conectar no Google Sheets (ou
+    None se a última tentativa deu certo). Usado pelos comandos pra mostrar
+    o motivo real em vez de simplesmente dizer 'a planilha está vazia'."""
+    return _ultimo_erro_conexao
+
+
 def obter_aba():
     """Conecta à API do Google e retorna a aba 'Procurados' da planilha."""
+    global _ultimo_erro_conexao
     try:
         # Carrega o arquivo JSON de credenciais que você colocou na pasta
         credenciais = Credentials.from_service_account_file("credenciais.json", scopes=ESCOPOS)
         cliente = gspread.authorize(credenciais)
-        
+
         # Abra pelo nome exato da sua planilha no Google Drive
-        planilha = cliente.open("Procurados Blues") 
-        return planilha.worksheet("Procurados")
+        planilha = cliente.open("Procurados Blues")
+        aba = planilha.worksheet("Procurados")
+        _ultimo_erro_conexao = None
+        return aba
     except Exception as e:
+        _ultimo_erro_conexao = str(e)
         print(f"❌ ERRO ao conectar com o Google Sheets: {e}")
         return None
 

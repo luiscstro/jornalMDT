@@ -60,6 +60,14 @@ class ProcuradoCog(commands.Cog):
             return
 
         todos_procurados = db.listar_procurados()
+        if not todos_procurados:
+            erro = db.obter_ultimo_erro_conexao()
+            if erro:
+                await interaction.followup.send(f"❌ Não consegui conectar à planilha do Google: `{erro}`", ephemeral=True)
+            else:
+                await interaction.followup.send("❌ Não há nenhum procurado cadastrado na planilha.", ephemeral=True)
+            return
+
         candidatos = [
             (nome, tipo) for (nome, tipo) in todos_procurados
             if not cdb.procurado_esta_travado(nome) and not cdb.nome_no_jornal_atual(nome)

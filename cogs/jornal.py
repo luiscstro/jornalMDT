@@ -168,7 +168,11 @@ class JornalCog(commands.Cog):
     async def lista_procurados_slash(self, interaction: discord.Interaction):
         lista = db.listar_procurados()
         if not lista:
-            await interaction.response.send_message("ℹ️ A planilha do Google está vazia.", ephemeral=True)
+            erro = db.obter_ultimo_erro_conexao()
+            if erro:
+                await interaction.response.send_message(f"❌ Não consegui conectar à planilha do Google: `{erro}`", ephemeral=True)
+            else:
+                await interaction.response.send_message("ℹ️ A planilha do Google está vazia.", ephemeral=True)
             return
 
         embed = discord.Embed(title="Lista Global de Procurados & Marinheiros", color=discord.Color.orange())
