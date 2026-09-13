@@ -9,7 +9,7 @@ import cacadas_db as cdb
 from cogs.permissoes import is_allowed_role
 
 # --- CONFIGURAÇÕES ---
-DIA_DA_SEMANA_UTC = 0
+DIA_DA_SEMANA_UTC = 6  # domingo (0=segunda ... 6=domingo)
 HORA_ATUALIZACAO_UTC = datetime.time(hour=15, minute=0, tzinfo=datetime.timezone.utc)
 ID_CANAL_JORNAL = 1220562194232508426
 
