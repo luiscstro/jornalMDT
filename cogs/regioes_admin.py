@@ -236,7 +236,7 @@ class PainelRegiaoView(PainelBaseView):
             pool = db.listar_procurados()
         except Exception:
             pool = []
-        texto = rengine.gerar_boletim_regiao(r, pool, teste=True)
+        texto, _ = rengine.gerar_boletim_regiao(r, pool, teste=True)
         if len(texto) > 1900:
             texto = texto[:1900] + "\n... (cortado na pré-visualização)"
         await interaction.followup.send(f"**Pré-visualização de {r['nome']}:**\n\n{texto}", ephemeral=True)

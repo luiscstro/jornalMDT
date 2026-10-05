@@ -12,6 +12,7 @@ Persistência do sistema de caça a procurados (/procurado):
 """
 
 import sqlite3
+import json
 import os
 import datetime
 from contextlib import contextmanager
@@ -35,6 +36,14 @@ CREATE TABLE IF NOT EXISTS cacadas (
 
 CREATE TABLE IF NOT EXISTS jornal_atual (
     procurado_nome TEXT PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS edicao_atual (
+    regiao_nome TEXT PRIMARY KEY,
+    ordem INTEGER NOT NULL,
+    channel_id INTEGER NOT NULL,
+    message_id INTEGER NOT NULL,
+    estado TEXT NOT NULL
 );
 """
 
@@ -150,6 +159,63 @@ def obter_jornal_atual() -> list:
     with get_conn() as conn:
         linhas = conn.execute("SELECT procurado_nome FROM jornal_atual").fetchall()
         return [r["procurado_nome"] for r in linhas]
+
+
+def trocar_no_jornal_atual(nome_antigo, nome_novo):
+    """Troca um nome da edição atual por outro (usado ao rerrolar o procurado)."""
+    with get_conn() as conn:
+        if nome_antigo:
+            conn.execute("DELETE FROM jornal_atual WHERE procurado_nome = ?", (nome_antigo,))
+        if nome_novo:
+            conn.execute("INSERT OR IGNORE INTO jornal_atual (procurado_nome) VALUES (?)", (nome_novo,))
+
+
+# ---------------------------------------------------------------------------
+# Estado da edição oficial atual (pra rerrolar variáveis e editar a mensagem)
+# ---------------------------------------------------------------------------
+
+def salvar_edicao_atual(registros: list):
+    """`registros`: [(regiao_nome, channel_id, message_id, estado_dict)] na ordem
+    de postagem. Substitui a edição anterior inteira."""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM edicao_atual")
+        conn.executemany(
+            "INSERT INTO edicao_atual (regiao_nome, ordem, channel_id, message_id, estado) VALUES (?, ?, ?, ?, ?)",
+            [(nome, ordem, canal_id, msg_id, json.dumps(estado))
+             for ordem, (nome, canal_id, msg_id, estado) in enumerate(registros)],
+        )
+
+
+def _linha_para_dict(r) -> dict:
+    d = dict(r)
+    d["estado"] = json.loads(d["estado"])
+    return d
+
+
+def listar_edicao_atual() -> list:
+    with get_conn() as conn:
+        linhas = conn.execute("SELECT * FROM edicao_atual ORDER BY ordem").fetchall()
+    return [_linha_para_dict(r) for r in linhas]
+
+
+def obter_edicao_regiao(regiao_nome: str):
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM edicao_atual WHERE regiao_nome = ?", (regiao_nome,)).fetchone()
+    return _linha_para_dict(row) if row else None
+
+
+def salvar_edicao_regiao(regiao_nome: str, channel_id: int, message_id: int, estado: dict):
+    """Insere/atualiza o registro de UMA região (mantém a posição se já existia)."""
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO edicao_atual (regiao_nome, ordem, channel_id, message_id, estado)
+               VALUES (?, (SELECT COALESCE(MAX(ordem), -1) + 1 FROM edicao_atual), ?, ?, ?)
+               ON CONFLICT(regiao_nome) DO UPDATE SET
+                   channel_id = excluded.channel_id,
+                   message_id = excluded.message_id,
+                   estado = excluded.estado""",
+            (regiao_nome, channel_id, message_id, json.dumps(estado)),
+        )
 
 
 def nome_no_jornal_atual(nome: str) -> bool:
