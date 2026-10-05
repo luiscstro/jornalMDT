@@ -2,6 +2,7 @@ import discord
 from discord.ext import tasks, commands
 from discord import app_commands
 import datetime
+import re
 import database as db
 import regioes_db as rdb
 import regioes_engine as rengine
@@ -26,6 +27,33 @@ async def procurado_autocomplete(interaction: discord.Interaction, current: str)
     return [app_commands.Choice(name=nome, value=nome) for (nome,) in procurados]
 
 
+async def mar_jornal_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    current = (current or "").lower()
+    nomes = [r["nome"] for r in rdb.listar_regioes(apenas_ativas=True)]
+    return [app_commands.Choice(name=n, value=n) for n in nomes if current in n.lower()][:25]
+
+
+async def variavel_jornal_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    regiao = rdb.obter_regiao_por_nome(getattr(interaction.namespace, "mar", None) or "")
+    if not regiao:
+        return []
+    current = (current or "").lower()
+    variaveis = rengine.listar_variaveis_regiao(regiao["id"])
+    return [app_commands.Choice(name=rotulo, value=chave) for rotulo, chave in variaveis if current in rotulo.lower()][:25]
+
+
+def interpretar_mensagem_id(valor: str):
+    """Aceita o ID da mensagem (procurada no canal do jornal) ou o link dela
+    (que já traz o canal). Retorna (canal_id, mensagem_id) ou None."""
+    valor = valor.strip()
+    m = re.search(r"(\d+)/(\d+)/?$", valor)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    if valor.isdigit():
+        return ID_CANAL_JORNAL, int(valor)
+    return None
+
+
 class JornalCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -43,20 +71,25 @@ class JornalCog(commands.Cog):
         return rengine.gerar_todos_boletins(teste=teste)
 
     async def enviar_boletins(self, canal, teste=False):
-        boletins, procurados_usados = self.gerar_boletins_completos(teste=teste)
+        boletins, procurados_usados, estados = self.gerar_boletins_completos(teste=teste)
 
         async def enviar_com_imagem(texto):
             # O Discord exige um novo objeto File para cada mensagem enviada
             arquivo_imagem = discord.File("image-1.png", filename="image-1.png")
-            await canal.send(content=texto, file=arquivo_imagem)
+            return await canal.send(content=texto, file=arquivo_imagem)
 
-        for texto in boletins.values():
-            await enviar_com_imagem(texto)
+        registros = []
+        for nome_regiao, texto in boletins.items():
+            mensagem = await enviar_com_imagem(texto)
+            registros.append((nome_regiao, canal.id, mensagem.id, estados[nome_regiao]))
 
         if not teste:
             # Edição oficial: esses nomes ficam bloqueados pro /procurado
             # até a próxima edição oficial ser postada.
             cdb.definir_jornal_atual(procurados_usados)
+            # Guarda os sorteios + id das mensagens pra /rerrolar_variavel
+            # conseguir trocar só uma variável editando a mensagem postada.
+            cdb.salvar_edicao_atual(registros)
 
     @tasks.loop(time=HORA_ATUALIZACAO_UTC)
     async def postar_noticias_semanais(self):
@@ -105,6 +138,88 @@ class JornalCog(commands.Cog):
             await interaction.followup.send(f"✅ Sucesso! O jornal oficial foi rerrolado e postado lá no <#{ID_CANAL_JORNAL}>.")
         except Exception as e:
             await interaction.followup.send(f"❌ ERRO ao tentar gerar o jornal oficial: {e}")
+
+    async def _buscar_mensagem(self, canal_id: int, mensagem_id: int) -> discord.Message:
+        canal = self.bot.get_channel(canal_id) or await self.bot.fetch_channel(canal_id)
+        return await canal.fetch_message(mensagem_id)
+
+    @app_commands.command(name="rerrolar_variavel", description="Rerrola UMA variável (clima, procurado, mestre, rota...) de uma região do jornal.")
+    @is_allowed_role()
+    @app_commands.describe(
+        mar="Qual região/mar do jornal.",
+        variavel="Qual variável rerrolar.",
+        mensagem_id="ID ou link da mensagem a editar (vazio = última edição oficial salva).",
+    )
+    @app_commands.autocomplete(mar=mar_jornal_autocomplete, variavel=variavel_jornal_autocomplete)
+    async def rerrolar_variavel_slash(self, interaction: discord.Interaction, mar: str, variavel: str, mensagem_id: str = None):
+        await interaction.response.defer(ephemeral=True)
+
+        regiao = rdb.obter_regiao_por_nome(mar)
+        if not regiao:
+            await interaction.followup.send(f"❌ A região **{mar}** não existe.")
+            return
+
+        try:
+            if mensagem_id:
+                alvo = interpretar_mensagem_id(mensagem_id)
+                if not alvo:
+                    await interaction.followup.send("❌ Não entendi esse ID. Passe o ID da mensagem ou o link dela.")
+                    return
+                canal_id, msg_id = alvo
+                mensagem = await self._buscar_mensagem(canal_id, msg_id)
+                if mensagem.author.id != self.bot.user.id:
+                    await interaction.followup.send("❌ Essa mensagem não foi postada por mim, não consigo editá-la.")
+                    return
+                # Reconstrói o que foi sorteado a partir do texto da própria mensagem.
+                nomes_conhecidos = [n for (n, _) in db.listar_procurados()] + cdb.obter_jornal_atual()
+                estado = rengine.reconstruir_estado(regiao, mensagem.content, nomes_conhecidos)
+            else:
+                registro = cdb.obter_edicao_regiao(mar)
+                if not registro:
+                    await interaction.followup.send(
+                        f"❌ Não há edição oficial salva para **{mar}**. Passe o `mensagem_id` da mensagem "
+                        f"do jornal que você quer editar."
+                    )
+                    return
+                canal_id, msg_id = registro["channel_id"], registro["message_id"]
+                estado = registro["estado"]
+                mensagem = await self._buscar_mensagem(canal_id, msg_id)
+        except discord.NotFound:
+            await interaction.followup.send("❌ Não encontrei essa mensagem (foi apagada ou o ID está errado).")
+            return
+        except discord.HTTPException as e:
+            await interaction.followup.send(f"❌ Não consegui buscar a mensagem: {e}")
+            return
+        except ValueError as e:
+            await interaction.followup.send(f"❌ {e}")
+            return
+
+        nome_antigo = rengine.nome_procurado(estado)
+        pool = None
+        if variavel == rengine.CHAVE_PROCURADO:
+            # Fora quem já está na edição atual e o procurado que vai ser trocado.
+            pool = [(n, t) for (n, t) in db.listar_procurados()
+                    if not cdb.nome_no_jornal_atual(n) and n != nome_antigo]
+
+        try:
+            novo_estado, novas_linhas = rengine.rerrolar_variavel(estado, variavel, pool)
+            await mensagem.edit(content=rengine.renderizar_estado(novo_estado))
+        except ValueError as e:
+            await interaction.followup.send(f"❌ {e}")
+            return
+        except discord.HTTPException as e:
+            await interaction.followup.send(f"❌ Não consegui editar a mensagem do jornal: {e}")
+            return
+
+        # Edições de teste não entram no rastreio da edição oficial.
+        if "[TESTE]" not in novo_estado["cabecalho"]:
+            cdb.salvar_edicao_regiao(mar, canal_id, msg_id, novo_estado)
+            if variavel == rengine.CHAVE_PROCURADO:
+                cdb.trocar_no_jornal_atual(nome_antigo, rengine.nome_procurado(novo_estado))
+
+        await interaction.followup.send(
+            f"✅ **{mar}** atualizado! ({mensagem.jump_url})\n" + "\n".join(novas_linhas)
+        )
 
     @app_commands.command(name="cadastrar", description="Cadastra um novo procurado na planilha do Google.")
     @is_allowed_role()

@@ -120,15 +120,15 @@ def _seed_defaults_if_empty():
         "North Blue": [
             "Blackpine Kingdom", "Deul Kingdom", "Downs Island", "Flevance Kingdom",
             "Frostharbor Island", "Germa Kingdom", "Kuen Island", "Lvneel Kingdom",
-            "Minion Island", "North Pole", "Notice Island", "Rakesh",
-            "Red Line", "Rubeck Island", "Spider Miles", "Swallow Island", "Whiteland Kingdom"
+            "Minion Island", "North Pole", "Notice Island", "Rakesh", 
+            "Rubeck Island", "Spider Miles", "Swallow Island", "Whiteland Kingdom"
         ],
         "West Blue": [
             "80th Branch", "Arlen Island", "Ballywood Kingdom", "Blackreef Island",
-            "East Blue", "Ferrônia", "Fogreach", "Ilisia Kingdom", "Isla Fortuna",
-            "Kano Kuni", "Las Camp", "North Blue", "Ohara", "Red Line",
-            "Saint Aurelia", "Soja Island", "South Blue", "Stormhaven",
-            "Toroa Island", "Vespera Island"
+            "Ferrônia", "Fogreach", "Ilisia Kingdom", "Isla Fortuna",
+            "Kano Kuni", "Las Camp", "Ohara",
+            "Saint Aurelia", "Soja Island", "Stormhaven",
+            "Toroa Island", "Vespera Island"    
         ],
     }
 
