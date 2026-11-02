@@ -20,7 +20,40 @@ DADOS_PADRAO = {
         "itens": [
             {"nome": "Ruínas", "chance": 80, "tipo": "normal", "msg_sim": "parece ter algo valioso nessa ilha.", "msg_nao": "não parece ter nada de valioso nessa ilha."},
             {"nome": "Contratação", "chance": 30, "tipo": "prof_profissional"},
-            {"nome": "Poneglyph", "chance": 25, "tipo": "poneglyph"}
+            {"nome": "Poneglyph", "chance": 25, "tipo": "poneglyph"},
+            {"nome": "Encontro", "tipo": "encontro", "opcoes": [
+                {"rotulo": "Caçada na ilha", "chance": 60, "emoji": "🎯", "tipo": "cacada"},
+                {"rotulo": "Pirata", "chance": 14, "emoji": "🏴‍☠️", "nd": 9},
+                {"rotulo": "Marinha", "chance": 14, "emoji": "⚓", "nd": 10},
+                {"rotulo": "Caçador de recompensa", "chance": 6, "emoji": "💰", "nd": 11},
+                {"rotulo": "Rei do Mar", "chance": 6, "emoji": "🐉", "nd": 11}
+            ]}
+        ]
+    },
+    "novo_mundo": {
+        "titulo": "Exploração: Novo Mundo",
+        "cor": 10038562, # Vermelho escuro
+        "itens": [
+            {"nome": "Encontro", "tipo": "encontro", "opcoes": [
+                {"rotulo": "Caçada na ilha", "chance": 60, "emoji": "🎯", "tipo": "cacada"},
+                {"rotulo": "Pirata", "chance": 14, "emoji": "🏴‍☠️", "nd": 14},
+                {"rotulo": "Marinha", "chance": 14, "emoji": "⚓", "nd": 15},
+                {"rotulo": "Caçador de recompensa", "chance": 6, "emoji": "💰", "nd": 16},
+                {"rotulo": "Rei do Mar", "chance": 6, "emoji": "🐉", "nd": 16}
+            ]}
+        ]
+    },
+    "calm_belt": {
+        "titulo": "Exploração: Calm Belt",
+        "cor": 7506394, # Cinza azulado
+        "itens": [
+            {"nome": "Encontro", "tipo": "encontro", "opcoes": [
+                {"rotulo": "Pirata", "chance": 9, "emoji": "🏴‍☠️", "nd": 16},
+                {"rotulo": "Marinha", "chance": 9, "emoji": "⚓", "nd": 16},
+                {"rotulo": "Caçador de recompensa", "chance": 12, "emoji": "💰", "nd": 16},
+                {"rotulo": "Rei do Mar", "chance": 30, "emoji": "🐉", "nd": 16},
+                {"rotulo": "Nada", "chance": 40, "tipo": "nada"}
+            ]}
         ]
     },
     "blues": {
@@ -198,6 +231,29 @@ class Exploracao(commands.Cog):
                         embed_main.add_field(name="**Poneglyph**", value=f"_Sim_, espera... encontramos um monólito de pedra extremamente peculiar... *(Use o comando `/ler_poneglyph` para investigar!)*{debug_txt}", inline=False)
                     else:
                         embed_main.add_field(name="**Poneglyph**", value=f"_Não_, não há registros do que quer que seja isso (Não tem na ilha){debug_txt}", inline=False)
+
+                elif tipo_item == "encontro":
+                    opcoes = item.get("opcoes", [])
+                    if not opcoes:
+                        continue
+                    total = sum(o.get("chance", 0) for o in opcoes)
+                    roll = round(random.uniform(0, total), 1)
+                    acumulado = 0
+                    sorteada = opcoes[-1]
+                    for opcao in opcoes:
+                        acumulado += opcao.get("chance", 0)
+                        if roll < acumulado:
+                            sorteada = opcao
+                            break
+                    debug_txt = f" `[debug: sorteou {roll} de {total}% → {sorteada.get('rotulo')} ({sorteada.get('chance', 0)}%)]`" if debug else ""
+
+                    if sorteada.get("tipo") == "nada":
+                        valor = f"_Nada_, nenhum encontro por aqui.{debug_txt}"
+                    elif sorteada.get("tipo") == "cacada":
+                        valor = f"{sorteada.get('emoji', '🎯')} É uma **caçada na ilha**!{debug_txt}"
+                    else:
+                        valor = f"{sorteada.get('emoji', '')} **{sorteada.get('rotulo')}** — **ND {sorteada.get('nd', '?')}**{debug_txt}"
+                    embed_main.add_field(name=f"**{nome_item}**", value=valor, inline=False)
 
             embed_main.set_footer(text=f"Explorado por {interaction.user.display_name}")
             
