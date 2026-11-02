@@ -6,6 +6,10 @@ acordo com a região. Cada região tem a sua tabela de chances e o ND de cada
 encontro (REGIOES). Resultados possíveis: caçada na ilha (um procurado anda
 arrumando confusão), bando pirata, frota da Marinha, caçador de recompensa,
 rei do mar e, no Calm Belt, "nada".
+
+Totto Land não usa essa tabela: ao falhar na navegação rola-se um Desastre
+(1d6, ataques das forças da Big Mom), e nas explorações vale o Desafio das
+Ilhas (/desafiodasilhas, 1d12), que também considera o Nível de Confusão (NC).
 """
 
 import random
@@ -64,7 +68,71 @@ REGIOES = {
             ("nada", 40, None),
         ],
     },
+    "totto_land": {"nome": "Totto Land", "desastre": True},
 }
+
+# --- TOTTO LAND: desastres na navegação (1d6) ---
+COR_TOTTO = 0xE0609B  # rosa doce
+
+# (rótulo, nº de d10 de dano, consequência extra)
+DESASTRES_TOTTO = {
+    1: ("Frota Tarte Pequena", 5, None),
+    2: ("Frota Tarte Média", 10, None),
+    3: ("Frota Tarte Grande", 15, None),
+    4: ("Oficial Doce (Perseguição)", 20, "O navio **perde metade do deslocamento**."),
+    5: ("Oficial Doce (Cerco)", 25, "O navio **perde todo o deslocamento**."),
+}
+
+DESASTRE_EMBATE = (
+    "Os membros da tripulação poderão executar uma **Técnica Combinada**, utilizando quaisquer técnicas "
+    "aprendidas que permitam realizar um ataque conjunto. O dano sofrido pelo navio será igual à diferença "
+    "entre **500** e o dano total causado pelo ataque, sendo 0 o dano mínimo. Caso o dano não seja "
+    "completamente anulado, o bando será considerado **capturado**.\n"
+    "Para escapar, deverá obter sucesso em um Teste de Navegação **CD 25**. A tentativa poderá ser solicitada "
+    "a partir da captura, respeitando o intervalo de uma semana entre novas tentativas até obter sucesso."
+)
+
+# --- TOTTO LAND: Desafio das Ilhas (1d12 ao iniciar uma exploração) ---
+# (resultado máximo do d12, chave)
+FAIXAS_DESAFIO = [(4, "nada"), (9, "patrulha"), (11, "combatente"), (12, "oficial")]
+
+ENCONTROS_TOTTO = {
+    "nada": {
+        "emoji": "🍃", "rotulo": "Passa despercebido", "nd": None, "cor": 0x6B7B8C,
+        "descricao": "Por sorte ou destino, o bando passa despercebido.",
+    },
+    "patrulha": {
+        "emoji": "🍬", "rotulo": "Patrulha Doce", "nd": None, "cor": 0xE0609B,
+        "descricao": "Formada majoritariamente por Soldados Xadrez, Homies que compõem a base do exército da Big Mom.",
+    },
+    "combatente": {
+        "emoji": "🧁", "rotulo": "Combatente Doce", "nd": 14, "cor": 0xD6409F,
+        "descricao": "Pirata subordinado à Big Mom, responsável por combater ameaças em seu território.",
+    },
+    "oficial": {
+        "emoji": "🎂", "rotulo": "Oficial Doce", "nd": 15, "cor": 0xB3261E,
+        "descricao": "Um dos filhos da Big Mom, também conhecido como Ministro.",
+    },
+    "furia": {
+        "emoji": "⚔️", "rotulo": "Exército da Fúria", "nd": 16, "cor": 0x8E1B1B,
+        "descricao": "Uma enorme tropa enviada para esmagar aqueles que desafiam a Imperatriz ou ameaçam seus filhos.",
+    },
+    "general": {
+        "emoji": "👑", "rotulo": "General Doce", "nd": 17, "cor": 0x5A0F0F,
+        "descricao": "Integrante da elite militar dos Piratas da Big Mom, com autoridade abaixo apenas da própria Imperatriz.",
+    },
+}
+
+
+def estado_de_cacada(nc: int) -> str:
+    """Estado de caçada correspondente ao Nível de Confusão (0-10)."""
+    if nc <= 1:
+        return "Desconhecidos — nenhuma consequência adicional."
+    if nc <= 7:
+        return "Monitorados — a CD dos Testes de Navegação aumenta em **+1**."
+    if nc <= 9:
+        return "Inimigos Públicos — o **Exército da Fúria** aparece na próxima exploração."
+    return "Alvos Marcados — um **General Doce** é o encontro da próxima exploração."
 
 
 def sortear_resultado(tabela: list) -> tuple:
@@ -90,6 +158,10 @@ class EncontroCog(commands.Cog):
     @app_commands.choices(regiao=[app_commands.Choice(name=r["nome"], value=chave) for chave, r in REGIOES.items()])
     async def encontromaritimo(self, interaction: discord.Interaction, regiao: app_commands.Choice[str], debug: bool = False):
         config = REGIOES[regiao.value]
+        if config.get("desastre"):
+            await self._enviar_desastre(interaction, config, debug)
+            return
+
         chave, nd, roll, total = sortear_resultado(config["tabela"])
         resultado = RESULTADOS[chave]
 
@@ -112,6 +184,76 @@ class EncontroCog(commands.Cog):
             icon_url=interaction.user.display_avatar.url,
         )
 
+        await interaction.response.send_message(embed=embed)
+
+    async def _enviar_desastre(self, interaction: discord.Interaction, config: dict, debug: bool):
+        """Totto Land: no lugar do encontro marítimo normal, rola 1d6 de desastre."""
+        roll = random.randint(1, 6)
+        debug_txt = f"d6 → {roll}"
+
+        if roll in DESASTRES_TOTTO:
+            rotulo, qtd, extra = DESASTRES_TOTTO[roll]
+            dados = [random.randint(1, 10) for _ in range(qtd)]
+            descricao = f"### 🧨 {rotulo}\nO navio sofre **{qtd}d10** de dano → 🎲 **{sum(dados)}**"
+            if extra:
+                descricao += f"\n{extra}"
+            debug_txt += f" · {qtd}d10: {dados}"
+        else:
+            rotulo = "Oficial Doce (Embate)"
+            descricao = f"### 🧨 {rotulo}\n{DESASTRE_EMBATE}"
+
+        descricao += "\n\n⚠️ Dentro de Totto Land, não existem Ilhas Secretas."
+        if debug:
+            descricao += f"\n`[debug: {debug_txt}]`"
+
+        embed = discord.Embed(description=descricao, color=COR_TOTTO, timestamp=discord.utils.utcnow())
+        embed.set_author(name=f"🌊 Encontro Marítimo · {config['nome']} · Desastre ({roll})")
+        embed.set_footer(
+            text=f"Navegando com {interaction.user.display_name}",
+            icon_url=interaction.user.display_avatar.url,
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="desafiodasilhas", description="Totto Land: sorteia o encontro ao iniciar uma exploração.")
+    @is_allowed_role()
+    @app_commands.describe(
+        nc="Nível de Confusão atual do bando (0 a 10). NC alto força um encontro específico.",
+        debug="Mostra os números sorteados.",
+    )
+    async def desafiodasilhas(self, interaction: discord.Interaction, nc: app_commands.Range[int, 0, 10] = None, debug: bool = False):
+        forcado = None
+        if nc is not None and nc >= 10:
+            forcado = "general"
+        elif nc is not None and nc >= 8:
+            forcado = "furia"
+
+        if forcado:
+            chave = forcado
+            debug_txt = f"NC {nc} força o encontro (prioridade sobre o 1d12)"
+        else:
+            roll = random.randint(1, 12)
+            chave = next(c for ate, c in FAIXAS_DESAFIO if roll <= ate)
+            debug_txt = f"d12 → {roll}"
+
+        encontro = ENCONTROS_TOTTO[chave]
+        titulo = f"{encontro['emoji']} {encontro['rotulo']}" + (f" — ND {encontro['nd']}" if encontro["nd"] else "")
+        descricao = f"### {titulo}\n{encontro['descricao']}"
+
+        if nc is not None:
+            descricao += f"\n\n🚨 **NC {nc}** · {estado_de_cacada(nc)}"
+        if forcado:
+            descricao += "\nEsse encontro tem prioridade sobre o resultado do Desafio das Ilhas."
+        if chave != "nada":
+            descricao += "\n\n-# Um encontro não significa necessariamente combate: depende das circunstâncias e do Nível de Confusão do bando."
+        if debug:
+            descricao += f"\n`[debug: {debug_txt}]`"
+
+        embed = discord.Embed(description=descricao, color=encontro["cor"], timestamp=discord.utils.utcnow())
+        embed.set_author(name="⚔️ Desafio das Ilhas · Totto Land")
+        embed.set_footer(
+            text=f"Explorando com {interaction.user.display_name}",
+            icon_url=interaction.user.display_avatar.url,
+        )
         await interaction.response.send_message(embed=embed)
 
 
