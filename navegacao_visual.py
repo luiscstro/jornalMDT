@@ -1,28 +1,55 @@
 """
 navegacao_visual.py
 --------------------
-Gera o GIF animado do Log Pose 3A: as 3 agulhas giram sem rumo, desaceleram e
-travam apontando pras ilhas, já na cor do tipo de cada uma (verde = Estável,
-amarelo = Moderada, vermelho = Instável). Quando Totto Land é apontada, as
-3 agulhas se juntam numa só, rosa.
+GIF animado do Log Pose de 3 agulhas (o do anime): corpo bege arredondado com
+3 bolhas de vidro verde-água, uma agulha (losango menta + ponta carmim, com
+pino branco) em cada bolha, argola amarela e pulseira rosa.
 
-Usa Pillow. Chame via asyncio.to_thread (é CPU, leva ~1s). Devolve BytesIO
-(GIF) ou None se algo falhar — o comando segue sem a animação.
+Animação: as agulhas giram sem rumo, desaceleram, balançam e assentam apontando
+pras ilhas. Ao assentar, o aro de cada bolha acende na cor do tipo
+(verde = Estável, âmbar = Moderada, vermelho = Instável). Quando Totto Land é
+apontada, as 3 agulhas apontam pro mesmo lado e os aros ficam rosa.
+
+Usa Pillow. É CPU (~1-2 s): chame via asyncio.to_thread. Devolve BytesIO (GIF)
+ou None se algo falhar — o comando segue sem a animação.
 """
 
 import io
 import math
 import random
 
-TAM = 360          # tamanho final (px)
-ESC = 2            # supersampling pra suavizar as bordas
-FUNDO = (14, 24, 38)
-ANEL = (205, 170, 90)
-ANEL_ESCURO = (92, 74, 40)
-CINZA = (120, 132, 148)
-CORES = {"E": (72, 200, 120), "M": (240, 190, 60), "I": (230, 75, 70), "T": (235, 100, 160)}
-# ângulos finais (graus, 0 = direita, sentido anti-horário na tela invertida) das 3 agulhas
-ANGULOS = (-90.0, 30.0, 150.0)
+LARG, ALT = 520, 440
+ESC = 2  # supersampling pra suavizar as bordas
+
+FUNDO = (22, 30, 46)
+PULSEIRA = (238, 150, 150)
+PULSEIRA_SOMBRA = (200, 118, 122)
+CORPO = (226, 192, 150)
+CORPO_CLARO = (240, 214, 176)
+CORPO_ESCURO = (196, 160, 118)
+CONTORNO = (58, 42, 38)
+ARGOLA = (250, 214, 70)
+ARGOLA_ESCURA = (214, 168, 40)
+VIDRO_BORDA = (40, 88, 80)
+VIDRO_CENTRO = (190, 238, 226)
+VIDRO_FUNDO = (110, 196, 182)
+MENTA = (196, 240, 228)
+MENTA_SOMBRA = (150, 206, 196)
+CARMIM = (168, 36, 92)
+SOMBRA_AGULHA = (82, 158, 148)
+ARO_NEUTRO = (96, 176, 150)
+CORES_TIPO = {"E": (72, 206, 120), "M": (244, 190, 56), "I": (232, 72, 66), "T": (238, 104, 164)}
+
+CENTRO = (232, 222)          # centro do corpo
+RAIO_CORPO = 184
+RAIO_BOLHA = 66
+# posição (dx, dy) das 3 bolhas: topo, esquerda-baixo, direita-baixo
+POS_BOLHAS = ((0, -96), (-86, 52), (86, 52))
+COMP_FRENTE, COMP_TRAS, LARG_AGULHA = 54, 30, 18
+
+
+def _s(v):
+    return v * ESC
 
 
 def _fonte(tamanho: int):
@@ -33,86 +60,156 @@ def _fonte(tamanho: int):
         return ImageFont.load_default()
 
 
-def _agulha(draw, cx, cy, ang, comp, cor, larg):
-    a = math.radians(ang)
-    ponta = (cx + comp * math.cos(a), cy + comp * math.sin(a))
-    cauda = (cx - comp * 0.28 * math.cos(a), cy - comp * 0.28 * math.sin(a))
-    px, py = -math.sin(a) * larg, math.cos(a) * larg
-    draw.polygon([(cauda[0] + px * 0.6, cauda[1] + py * 0.6), (cx + px, cy + py), ponta,
-                  (cx - px, cy - py), (cauda[0] - px * 0.6, cauda[1] - py * 0.6)], fill=cor)
-    return ponta
+def _mix(a, b, t):
+    return tuple(int(x + (y - x) * t) for x, y in zip(a, b))
 
 
-def _frame(ang_atual, cores, numeros, pulso, brilho_ponta):
+def _circulo(d, cx, cy, r, **kw):
+    d.ellipse([_s(cx - r), _s(cy - r), _s(cx + r), _s(cy + r)], **kw)
+
+
+def _fundo_estatico():
+    """Pulseira, argola, corpo e bolhas (a parte que não se mexe), em alta resolução."""
     from PIL import Image, ImageDraw
-    t = TAM * ESC
-    img = Image.new("RGB", (t, t), FUNDO)
+    img = Image.new("RGB", (_s(LARG), _s(ALT)), FUNDO)
     d = ImageDraw.Draw(img)
-    c = t // 2
-    raio = int(t * 0.44)
+    cx, cy = CENTRO
 
-    # anel e marcações
-    d.ellipse([c - raio, c - raio, c + raio, c + raio], outline=ANEL, width=6 * ESC // 2)
-    d.ellipse([c - raio + 14 * ESC, c - raio + 14 * ESC, c + raio - 14 * ESC, c + raio - 14 * ESC],
-              outline=ANEL_ESCURO, width=2 * ESC // 2 or 1)
-    for k in range(36):
-        a = math.radians(k * 10)
-        r1 = raio - 14 * ESC
-        r2 = r1 - (12 if k % 9 == 0 else 6) * ESC
-        d.line([(c + r1 * math.cos(a), c + r1 * math.sin(a)), (c + r2 * math.cos(a), c + r2 * math.sin(a))],
-               fill=ANEL if k % 9 == 0 else ANEL_ESCURO, width=2 * ESC // 2 or 1)
+    # pulseira (atrás do corpo)
+    d.rounded_rectangle([_s(0), _s(cy - 52), _s(LARG), _s(cy + 58)], radius=_s(30), fill=PULSEIRA)
+    d.rounded_rectangle([_s(0), _s(cy + 34), _s(LARG), _s(cy + 58)], radius=_s(24), fill=PULSEIRA_SOMBRA)
 
-    # pulso ao travar
-    if pulso > 0:
-        r = int(raio * (0.55 + 0.45 * pulso))
-        d.ellipse([c - r, c - r, c + r, c + r], outline=tuple(int(v * (1 - pulso) + f * pulso) for v, f in zip(ANEL, FUNDO)),
-                  width=3 * ESC)
+    # argola amarela, à direita (parte dela fica atrás do corpo)
+    ax, ay = cx + RAIO_CORPO - 6, cy - 6
+    d.ellipse([_s(ax - 34), _s(ay - 118), _s(ax + 44), _s(ay + 118)], outline=ARGOLA_ESCURA, width=_s(20))
+    d.ellipse([_s(ax - 34), _s(ay - 118), _s(ax + 44), _s(ay + 118)], outline=ARGOLA, width=_s(14))
+    d.arc([_s(ax - 26), _s(ay - 108), _s(ax + 36), _s(ay + 108)], 285, 345, fill=(255, 244, 190), width=_s(4))
 
-    # agulhas
-    fonte = _fonte(15 * ESC)
-    for ang, cor, num in zip(ang_atual, cores, numeros):
-        ponta = _agulha(d, c, c, ang, raio - 26 * ESC, cor, 7 * ESC)
-        if brilho_ponta and num is not None:
-            r = 13 * ESC
-            d.ellipse([ponta[0] - r, ponta[1] - r, ponta[0] + r, ponta[1] + r], fill=FUNDO, outline=cor, width=3 * ESC)
-            d.text(ponta, str(num), fill=cor, font=fonte, anchor="mm")
+    # corpo (esfera de madeira clara)
+    _circulo(d, cx, cy + 4, RAIO_CORPO, fill=CONTORNO)
+    for k in range(34):                       # gradiente radial, claro no canto superior esquerdo
+        t = k / 33
+        r = RAIO_CORPO - 3 - t * (RAIO_CORPO - 10)
+        _circulo(d, cx - 22 * t, cy - 20 * t, r, fill=_mix(CORPO_ESCURO, CORPO_CLARO, t))
+    # base do corpo (apoio)
+    d.polygon([(_s(cx - 34), _s(cy + RAIO_CORPO - 4)), (_s(cx + 34), _s(cy + RAIO_CORPO - 4)),
+               (_s(cx + 30), _s(cy + RAIO_CORPO + 24)), (_s(cx - 30), _s(cy + RAIO_CORPO + 24))], fill=(150, 120, 96))
 
-    # pino central
-    d.ellipse([c - 10 * ESC, c - 10 * ESC, c + 10 * ESC, c + 10 * ESC], fill=ANEL, outline=ANEL_ESCURO, width=2 * ESC)
-    d.ellipse([c - 4 * ESC, c - 4 * ESC, c + 4 * ESC, c + 4 * ESC], fill=FUNDO)
-    return img.resize((TAM, TAM), Image.LANCZOS)
+    # bolhas de vidro
+    for dx, dy in POS_BOLHAS:
+        bx, by = cx + dx, cy + dy
+        _circulo(d, bx, by, RAIO_BOLHA + 3, fill=CONTORNO)
+        for k in range(26):
+            t = k / 25
+            r = RAIO_BOLHA - t * (RAIO_BOLHA - 8)
+            _circulo(d, bx - 10 * t, by - 12 * t, r, fill=_mix(VIDRO_FUNDO, VIDRO_CENTRO, t))
+        d.arc([_s(bx - RAIO_BOLHA + 10), _s(by - RAIO_BOLHA + 10), _s(bx + RAIO_BOLHA - 10), _s(by + RAIO_BOLHA - 10)],
+              195, 265, fill=(244, 255, 252), width=_s(5))       # brilho do vidro
+        _circulo(d, bx - 30, by - 36, 5, fill=(255, 255, 255))
+    return img
+
+
+def _agulha(d, px, py, graus, cor_frente=MENTA, sombra=True):
+    """Losango da agulha apontando pra `graus` (0 = direita, 90 = baixo)."""
+    a = math.radians(graus)
+    ux, uy = math.cos(a), math.sin(a)
+    vx, vy = -uy, ux
+    frente = (px + ux * COMP_FRENTE, py + uy * COMP_FRENTE)
+    tras = (px - ux * COMP_TRAS, py - uy * COMP_TRAS)
+    e = (px + vx * LARG_AGULHA, py + vy * LARG_AGULHA)
+    di = (px - vx * LARG_AGULHA, py - vy * LARG_AGULHA)
+
+    def pts(*ps, dx=0, dy=0):
+        return [(_s(x + dx), _s(y + dy)) for x, y in ps]
+
+    if sombra:
+        d.polygon(pts(frente, e, tras, di, dx=4, dy=5), fill=SOMBRA_AGULHA)
+    d.polygon(pts(frente, e, (px, py), di), fill=cor_frente)            # parte menta (frente)
+    d.polygon(pts(frente, di, (px, py)), fill=MENTA_SOMBRA)             # meia face em sombra
+    d.polygon(pts(tras, e, (px, py), di), fill=CARMIM)                  # ponta carmim (trás)
+    d.line(pts(frente, e, tras, di, frente), fill=CONTORNO, width=_s(2), joint="curve")
+    d.line(pts(frente, (px, py)), fill=(120, 170, 164), width=_s(1))
+
+
+def _pino(d, px, py):
+    d.line([(_s(px), _s(py)), (_s(px + 9), _s(py - 18))], fill=(236, 240, 240), width=_s(3))
+    _circulo(d, px + 9, py - 19, 6, fill=(255, 255, 255), outline=(150, 160, 164), width=_s(1))
+
+
+def _frame(base, angulos, aros, numeros, brilho):
+    """angulos: 3 ângulos; aros: 3 cores de aro; numeros: 3 rótulos (ou None);
+    brilho: 0..1 intensidade do pulso de luz do aro (quando a agulha assenta)."""
+    from PIL import Image, ImageDraw
+    img = base.copy()
+    d = ImageDraw.Draw(img)
+    cx, cy = CENTRO
+    fonte = _fonte(_s(14))
+
+    for (dx, dy), ang, aro, num in zip(POS_BOLHAS, angulos, aros, numeros):
+        bx, by = cx + dx, cy + dy
+        if brilho > 0:                                           # halo que se expande
+            r = RAIO_BOLHA + 2 + 12 * brilho
+            _circulo(d, bx, by, r, outline=_mix(aro, FUNDO, brilho * 0.7), width=_s(3))
+        _circulo(d, bx, by, RAIO_BOLHA - 2, outline=aro, width=_s(5))   # aro colorido do vidro
+        _agulha(d, bx, by, ang)
+        _pino(d, bx, by)
+        if num is not None:                                      # selo numerado, do lado de fora da bolha
+            nx, ny = bx + dx * 0.0, by
+            # direção radial a partir do centro do corpo
+            ux, uy = (dx, dy)
+            n = math.hypot(ux, uy) or 1
+            sx, sy = bx + ux / n * (RAIO_BOLHA + 12), by + uy / n * (RAIO_BOLHA + 12)
+            _circulo(d, sx, sy, 13, fill=FUNDO, outline=aro, width=_s(3))
+            d.text((_s(sx), _s(sy)), str(num), fill=(250, 250, 250), font=fonte, anchor="mm")
+    return img.resize((LARG, ALT), Image.LANCZOS)
 
 
 def gerar_gif_logpose(tipos: list, totto: bool = False, seed=None):
-    """tipos: lista de 'E'/'M'/'I' (uma por agulha, 1 a 3). Retorna BytesIO do GIF ou None."""
+    """tipos: 'E'/'M'/'I' por agulha (1 a 3). Retorna BytesIO do GIF ou None."""
     try:
+        from PIL import Image
         rng = random.Random(seed)
         n = max(1, min(3, len(tipos)))
-        finais = [ANGULOS[0]] * n if totto else list(ANGULOS[:n])
-        cores_finais = [CORES["T"]] * n if totto else [CORES.get(t, CINZA) for t in tipos[:n]]
-        numeros = [None if totto else i + 1 for i in range(n)]
+        base = _fundo_estatico()
 
-        # cada agulha dá voltas diferentes antes de travar no ângulo final
-        voltas = [rng.choice([2, 3, 4]) * 360 * rng.choice([1, -1]) for _ in range(n)]
-        inicios = [rng.uniform(0, 360) for _ in range(n)]
+        if totto:
+            alvo = rng.uniform(0, 360)
+            finais = [alvo] * 3
+            aros_finais = [CORES_TIPO["T"]] * 3
+            numeros = [None] * 3
+        else:
+            finais = [rng.uniform(0, 360) for _ in range(3)]
+            aros_finais = [CORES_TIPO.get(t, ARO_NEUTRO) for t in tipos[:3]]
+            aros_finais += [ARO_NEUTRO] * (3 - len(aros_finais))
+            numeros = [i + 1 if i < n else None for i in range(3)]
 
+        voltas = [rng.choice([2, 3]) * 360 * rng.choice([1, -1]) for _ in range(3)]
+        neutro = [ARO_NEUTRO] * 3
         frames, duracoes = [], []
-        giro = 30
+
+        giro = 14                                 # gira e desacelera
         for f in range(giro):
             p = f / (giro - 1)
-            suave = 1 - (1 - p) ** 3          # desacelera até parar
-            angs = [fin + (1 - suave) * (v + ini - fin) for fin, v, ini in zip(finais, voltas, inicios)]
-            frames.append(_frame(angs, [CINZA] * n, numeros, 0, False))
+            suave = 1 - (1 - p) ** 3
+            angs = [fin + (1 - suave) * v for fin, v in zip(finais, voltas)]
+            frames.append(_frame(base, angs, neutro, [None] * 3, 0))
             duracoes.append(45)
 
-        for f in range(10):                   # travou: ganha cor e um pulso
-            p = f / 9
-            cores = cores_finais if f >= 1 else [CINZA] * n
-            frames.append(_frame(finais, cores, numeros, 1 - p if f else 0.0, True))
-            duracoes.append(70)
-        frames.append(_frame(finais, cores_finais, numeros, 0, True))
-        duracoes.append(3500)                 # segura o resultado antes de repetir
+        balanco = 10                              # balança e assenta (como uma bússola de verdade)
+        for f in range(1, balanco + 1):
+            amp = 26 * math.exp(-0.32 * f)
+            angs = [fin + amp * math.cos(0.95 * f + k) for k, fin in enumerate(finais)]
+            frames.append(_frame(base, angs, neutro, [None] * 3, 0))
+            duracoes.append(55)
 
+        for f in range(6):                        # assentou: aro acende com um pulso
+            brilho = 1 - f / 5
+            frames.append(_frame(base, finais, aros_finais, numeros, brilho))
+            duracoes.append(70)
+        frames.append(_frame(base, finais, aros_finais, numeros, 0))
+        duracoes.append(3500)                     # segura o resultado antes de repetir
+
+        frames = [fr.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for fr in frames]
         buf = io.BytesIO()
         frames[0].save(buf, format="GIF", save_all=True, append_images=frames[1:],
                        duration=duracoes, loop=0, optimize=False, disposal=2)
