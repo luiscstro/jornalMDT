@@ -25,7 +25,7 @@ Detalhes ficam em `docs/` — leia só o que for relevante à tarefa:
 - `cogs/` — um arquivo por sistema (jornal, regioes_admin, procurado, encontro, exploracao, permissoes).
 - `regioes_db.py` / `regioes_engine.py` — dados e sorteio do jornal (SQLite `regioes.db`).
 - `cacadas_db.py` — travas de caça e estado da edição oficial (SQLite `cacadas.db`).
-- `navegacao_engine.py` / `navegacao_db.py` / `navegacao_dados.py` — navegação do Novo Mundo (regras puras, PostgreSQL via `DATABASE_URL` ou Sheets, ilhas de seed).
+- `navegacao_engine.py` / `navegacao_db.py` / `navegacao_dados.py` / `navegacao_visual.py` — navegação do Novo Mundo (regras puras, PostgreSQL via `DATABASE_URL` ou Sheets, ilhas de seed).
 - `database.py` — integração com a planilha Google "Procurados Blues" (aba "Procurados").
 
 ## Permissões
@@ -38,3 +38,5 @@ Não duplicar a lista de IDs em outro lugar.
 - Mensagem do jornal é reconstruída por regex contra os templates atuais (`reconstruir_estado`); mudar um template quebra o `/rerrolar_variavel` em mensagens antigas.
 - Edição de teste (`[TESTE]`) não grava estado oficial.
 - Ao postar uma edição oficial, `jornal_atual` é substituído inteiro — nomes da edição ficam fora do `/procurado`.
+- Botões ✅/❌ da navegação são `DynamicItem` persistentes: não mude o formato do `custom_id` (`nm:ag:res:hash:sync`) sem manter compatibilidade, senão mensagens antigas quebram.
+- Bot e banco precisam estar no mesmo cluster da Discloud (VLAN não cruza clusters).

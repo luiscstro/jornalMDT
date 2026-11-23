@@ -15,7 +15,7 @@
 | `regioes_engine.py` | Gera o estado do boletim (`gerar_estado_regiao`), renderiza texto, rerrola uma variável, reconstrói estado de mensagem postada. |
 | `cacadas_db.py` | Travas de caça (14 dias), `jornal_atual`, `edicao_atual` (estado JSON por região). |
 | `database.py` | Lê/escreve a planilha Google via gspread (`credenciais.json`). `obter_planilha()` é compartilhada com a navegação. |
-| `cogs/navegacao.py` | Comandos da navegação do Novo Mundo. Regras em `navegacao_engine.py`, PostgreSQL/Sheets em `navegacao_db.py`, ilhas de seed em `navegacao_dados.py`. Ver `REGRAS_NAVEGACAO.md`. |
+| `cogs/navegacao.py` | `/navegar`, `/navegacao` (painel) e botões persistentes da navegação do Novo Mundo. GIF em `navegacao_visual.py`. Regras em `navegacao_engine.py`, PostgreSQL/Sheets em `navegacao_db.py`, ilhas de seed em `navegacao_dados.py`. Ver `REGRAS_NAVEGACAO.md`. |
 | `image-1.png` | Imagem anexada a cada boletim enviado. |
 
 ## Bancos
