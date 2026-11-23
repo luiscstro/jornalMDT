@@ -4,12 +4,13 @@
 
 | Arquivo | Papel |
 |---|---|
-| `bot.py` | `BotBase`. `setup_hook` carrega cogs na ordem: jornal, exploracao, regioes_admin, procurado, encontro, navegacao. Depois `tree.sync()`. Prefixo `jornal!` (não há comandos de texto). |
+| `bot.py` | `BotBase`. `setup_hook` carrega cogs na ordem: jornal, exploracao, regioes_admin, procurado, encontro, navegacao, ajuda. Depois `tree.sync()`. Prefixo `jornal!` (não há comandos de texto). |
 | `cogs/jornal.py` | `/testar_noticia`, `/rerrolar_jornal`, `/rerrolar_variavel`, `/cadastrar`, `/remover`, `/editar`, `/lista_procurados`. Loop semanal `postar_noticias_semanais`. |
 | `cogs/regioes_admin.py` | `/regioes`: painel com botões/selects/modais (locais, templates, clima, grupos, variações). |
 | `cogs/procurado.py` | `/procurado`, `/procurados_ativos`, `/procurado_liberar`. |
 | `cogs/encontro.py` | `/encontromaritimo`, `/desafiodasilhas` (Totto Land). |
 | `cogs/exploracao.py` | `/exploracao`, `/ler_poneglyph`. Dados em `exploracao_data.json`. |
+| `cogs/ajuda.py` | `/ajuda [comando]`. Textos em `ajuda_dados.py`; `tools/checar_ajuda.py` confere se estão em dia. |
 | `cogs/permissoes.py` | `is_allowed_role()` e IDs de cargos. |
 | `regioes_db.py` | Schema e CRUD SQLite de regiões, locais, grupos, variações, categorias e opções de clima. Seed inicial (`_seed_defaults_if_empty`). `sortear_com_peso`, `calcular_porcentagens`. |
 | `regioes_engine.py` | Gera o estado do boletim (`gerar_estado_regiao`), renderiza texto, rerrola uma variável, reconstrói estado de mensagem postada. |

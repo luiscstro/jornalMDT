@@ -66,6 +66,14 @@ class BotBase(commands.Bot):
             print("❌ Erro FATAL ao carregar o cog 'navegacao':")
             traceback.print_exc()
 
+        # 7. CARREGA A AJUDA (/ajuda)
+        try:
+            await self.load_extension("cogs.ajuda")
+            print("✅ Cog 'ajuda' carregado com sucesso.")
+        except Exception as e:
+            print("❌ Erro FATAL ao carregar o cog 'ajuda':")
+            traceback.print_exc()
+
         # SINCRONIZA TODOS OS COMANDOS
         print("--- Sincronizando Comandos Slash ---")
         try:

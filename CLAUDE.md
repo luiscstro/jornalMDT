@@ -40,3 +40,4 @@ Não duplicar a lista de IDs em outro lugar.
 - Ao postar uma edição oficial, `jornal_atual` é substituído inteiro — nomes da edição ficam fora do `/procurado`.
 - Botões ✅/❌ da navegação são `DynamicItem` persistentes: não mude o formato do `custom_id` (`nm:ag:res:hash:sync`) sem manter compatibilidade, senão mensagens antigas quebram.
 - Bot e banco precisam estar no mesmo cluster da Discloud (VLAN não cruza clusters).
+- Novo comando = atualizar também `ajuda_dados.py` (texto do `/ajuda`) e rodar `python tools/checar_ajuda.py`.

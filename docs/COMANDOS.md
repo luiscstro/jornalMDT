@@ -53,6 +53,14 @@ Os botões de sucesso/falha são persistentes (sem timeout, sobrevivem a reiníc
 
 Regras: `REGRAS_NAVEGACAO.md`.
 
+## Ajuda (`cogs/ajuda.py`)
+
+| Comando | O que faz |
+|---|---|
+| `/ajuda [comando]` | Sem argumento: resumo de todos os comandos. Com `comando`: explicação detalhada (autocomplete). Aberto a todos, resposta só pra quem pediu. |
+
+Os textos ficam em `ajuda_dados.py`. **Ao criar, renomear ou remover um comando, atualize esse arquivo** e rode `python tools/checar_ajuda.py`.
+
 ## Sem comando, mas relevante
 
 - Loop semanal (domingo 15:00 UTC): posta a edição oficial automaticamente.
