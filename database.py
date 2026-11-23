@@ -18,8 +18,9 @@ def obter_ultimo_erro_conexao():
     return _ultimo_erro_conexao
 
 
-def obter_aba():
-    """Conecta à API do Google e retorna a aba 'Procurados' da planilha."""
+def obter_planilha():
+    """Conecta à API do Google e retorna a planilha 'Procurados Blues' inteira
+    (usada também pela navegação do Novo Mundo, que guarda suas abas nela)."""
     global _ultimo_erro_conexao
     try:
         # Carrega o arquivo JSON de credenciais que você colocou na pasta
@@ -28,12 +29,25 @@ def obter_aba():
 
         # Abra pelo nome exato da sua planilha no Google Drive
         planilha = cliente.open("Procurados Blues")
-        aba = planilha.worksheet("Procurados")
         _ultimo_erro_conexao = None
-        return aba
+        return planilha
     except Exception as e:
         _ultimo_erro_conexao = str(e)
         print(f"❌ ERRO ao conectar com o Google Sheets: {e}")
+        return None
+
+
+def obter_aba():
+    """Retorna a aba 'Procurados' da planilha (ou None se não conectar)."""
+    global _ultimo_erro_conexao
+    planilha = obter_planilha()
+    if planilha is None:
+        return None
+    try:
+        return planilha.worksheet("Procurados")
+    except Exception as e:
+        _ultimo_erro_conexao = str(e)
+        print(f"❌ ERRO ao abrir a aba 'Procurados': {e}")
         return None
 
 def cadastrar_procurado(nome, tipo):
