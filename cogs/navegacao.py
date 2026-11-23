@@ -364,5 +364,56 @@ class NavegacaoCog(commands.Cog):
         await interaction.followup.send(content="✅ Ajustado (o Log Pose foi dessincronizado):", embed=_embed_status(estado), ephemeral=True)
 
 
+    # ------------------------------------------------------------------
+    @app_commands.command(name="navegacao_ilha_adicionar", description="Mestre: cadastra uma ilha no banco da navegação (ex: ilhas de Totto Land).")
+    @is_allowed_role()
+    @app_commands.describe(nome="Nome da ilha.", tipo="Tipo da ilha.", area="Área da ilha (Totto Land = 2).", nota="Observação (no Calm Belt: nível 1 ou 2).")
+    @app_commands.choices(
+        tipo=[app_commands.Choice(name=n, value=n) for n in ndb.TIPOS_ILHA],
+        area=[app_commands.Choice(name=n, value=n) for n in ("1", "2", "3", "4", "calm")],
+    )
+    async def navegacao_ilha_adicionar(self, interaction: discord.Interaction, nome: str,
+                                       tipo: app_commands.Choice[str], area: app_commands.Choice[str], nota: str = ""):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            ok = await asyncio.to_thread(ndb.adicionar_ilha, area.value, nome, tipo.value, nota)
+        except ndb.ErroBanco as e:
+            await interaction.followup.send(embed=_msg_erro(str(e)), ephemeral=True)
+            return
+        if ok:
+            await interaction.followup.send(f"✅ **{nome.strip()}** cadastrada (área {area.value}, tipo `{tipo.value}`).", ephemeral=True)
+        else:
+            await interaction.followup.send(embed=_msg_erro(f"Já existe uma ilha chamada **{nome.strip()}**."), ephemeral=True)
+
+    @app_commands.command(name="navegacao_ilha_remover", description="Mestre: remove uma ilha do banco da navegação.")
+    @is_allowed_role()
+    @app_commands.describe(nome="Nome exato da ilha.")
+    async def navegacao_ilha_remover(self, interaction: discord.Interaction, nome: str):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            ok = await asyncio.to_thread(ndb.remover_ilha, nome)
+        except ndb.ErroBanco as e:
+            await interaction.followup.send(embed=_msg_erro(str(e)), ephemeral=True)
+            return
+        if ok:
+            await interaction.followup.send(f"🗑️ **{nome.strip()}** removida.", ephemeral=True)
+        else:
+            await interaction.followup.send(embed=_msg_erro(f"Não achei a ilha **{nome.strip()}**."), ephemeral=True)
+
+    @app_commands.command(name="navegacao_banco", description="Mestre: mostra qual banco a navegação está usando e se está conectado.")
+    @is_allowed_role()
+    async def navegacao_banco(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            ilhas = await asyncio.to_thread(ndb.listar_ilhas, True)
+            bandos = await asyncio.to_thread(ndb.listar_nomes_bandos)
+        except ndb.ErroBanco as e:
+            await interaction.followup.send(embed=_msg_erro(f"[{ndb.nome_backend()}] {e}"), ephemeral=True)
+            return
+        await interaction.followup.send(
+            f"✅ Banco: **{ndb.nome_backend()}**\n• {len(ilhas)} ilhas cadastradas\n• {len(bandos)} bandos",
+            ephemeral=True)
+
+
 async def setup(bot):
     await bot.add_cog(NavegacaoCog(bot))

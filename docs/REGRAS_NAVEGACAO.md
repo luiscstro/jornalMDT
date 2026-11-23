@@ -2,19 +2,25 @@
 
 Código: `cogs/navegacao.py` (comandos), `navegacao_engine.py` (regras, constantes de balanceamento no topo), `navegacao_db.py` (Google Sheets), `navegacao_dados.py` (ilhas de seed).
 
-## Armazenamento (grátis e persistente)
+## Armazenamento (persistente)
 
-Google Sheets, na mesma planilha "Procurados Blues" e com as mesmas credenciais (`credenciais.json`). Abas criadas sozinhas no primeiro uso:
+`navegacao_db.py` escolhe o backend pela variável de ambiente **`DATABASE_URL`**:
 
-| Aba | Colunas | Conteúdo |
-|---|---|---|
-| `NM_Ilhas` | area, nome, tipo, nota | Ilhas. Semeada uma vez a partir de `navegacao_dados.py`; depois é a fonte da verdade e pode ser editada à mão (cache de 60 s). |
-| `NM_Bandos` | bando, estado (JSON), atualizado | Um bando por linha. |
-| `NM_Log` | data, bando, evento, detalhe | Histórico só de anexar. |
+- **Com `DATABASE_URL`: PostgreSQL da Discloud** (produção). Tabelas `nm_ilhas`, `nm_bandos` (estado em JSONB) e `nm_log`, criadas sozinhas na primeira conexão; `nm_ilhas` é semeada de `navegacao_dados.py`. O banco só é acessível pela rede privada (VLAN), então não dá pra conectar do PC.
+- **Sem `DATABASE_URL`: Google Sheets** (reserva/testes locais). Abas `NM_Ilhas`, `NM_Bandos`, `NM_Log` na planilha "Procurados Blues".
 
-Tipos de ilha: `inicial`, `sincronizavel`, `secreta`, `principal`, `totto` (o arquipélago), `totto_ilha` (ilhas dentro de Totto), `calm` (nota = nível 1 ou 2). Área: 1, 2, 3, 4 ou `calm`.
+Os dois backends têm a mesma interface; os dados **não migram sozinhos** de um para o outro.
 
-**Ilhas de Totto Land ainda não estão cadastradas.** Adicione linhas com área `2` e tipo `totto_ilha` em `NM_Ilhas`.
+Ilhas: gerencie por `/navegacao_ilha_adicionar` e `/navegacao_ilha_remover`. `/navegacao_banco` mostra o backend em uso e testa a conexão. Tipos: `inicial`, `sincronizavel`, `secreta`, `principal`, `totto` (o arquipélago), `totto_ilha` (ilhas dentro de Totto), `calm` (nota = nível 1 ou 2). Área: 1, 2, 3, 4 ou `calm`.
+
+**Ilhas de Totto Land ainda não estão cadastradas:** use `/navegacao_ilha_adicionar` com área `2` e tipo `totto_ilha`.
+
+### Ligar o PostgreSQL na Discloud
+
+1. Dashboard > Databases > Create database > PostgreSQL (mín. 512 MB de RAM, conta na RAM do plano).
+2. Ativar **VLAN** na aplicação do bot (plano Diamond) e deixar bot e banco no mesmo cluster/Project.
+3. Colocar `DATABASE_URL=postgresql://USUARIO:SENHA@HOST:PORTA/BANCO` no `.env` do bot na Discloud (URL do card "Private connection"). Nunca no Git.
+4. Rebuild/deploy. Conferir com `/navegacao_banco`.
 
 ## Regras implementadas
 

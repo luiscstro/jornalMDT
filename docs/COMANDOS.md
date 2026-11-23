@@ -52,6 +52,9 @@ Todos exigem cargo permitido, exceto onde indicado.
 | `/totto_sair bando` | Sai de Totto Land (5 progressões lá dentro). |
 | `/navegacao_status bando` | Situação do bando (efêmero). |
 | `/navegacao_ajustar bando ...` | Mestre: corrige área, progressão, local (efêmero). |
+| `/navegacao_ilha_adicionar nome tipo area [nota]` | Mestre: cadastra ilha (ex: Totto Land). |
+| `/navegacao_ilha_remover nome` | Mestre: remove ilha. |
+| `/navegacao_banco` | Mostra o backend em uso e testa a conexão. |
 
 Regras: `REGRAS_NAVEGACAO.md`.
 

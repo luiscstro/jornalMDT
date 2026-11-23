@@ -2,3 +2,4 @@ discord.py
 gspread
 google-auth
 dotenv
+psycopg2-binary
