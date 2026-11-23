@@ -46,14 +46,6 @@ Os botões da mensagem de sincronização usam `discord.ui.DynamicItem` com `tim
 
 ## GIF
 
-`navegacao_visual.gerar_gif_logpose`: 3 agulhas giram, desaceleram e travam já na cor do tipo (verde/amarelo/vermelho); em Totto Land viram uma só, rosa. ~3 s pra gerar (roda em thread). Se falhar, a sincronização sai sem GIF.
+`navegacao_visual.gerar_gif_logpose`: usa a imagem `assets/logpose_base.png` (Log Pose do anime, **já sem as agulhas**) como fundo e desenha por cima só as 3 agulhas, o aro colorido de cada bolha (verde/âmbar/vermelho pelo tipo) e o número. As agulhas giram, balançam e assentam; em Totto Land as 3 apontam pro mesmo lado e o aro fica rosa. ~2,5 s pra gerar (roda em thread), ~1 MB. Se a imagem faltar ou der erro, a sincronização sai sem GIF.
 
-## Decisões assumidas (não vieram das regras; mude as constantes se não servir)
-
-- Tipo da agulha: chance igual (1/3 cada), `PESOS_TIPO_AGULHA`.
-- Progressão é ganha ao **chegar** na ilha. Ilhas secretas e do Calm Belt não dão progressão.
-- Chegar na ilha principal e entrar em Totto Land não dão progressão.
-- Calm Belt níveis 1 e 2 entram no mesmo sorteio (sem regra de nível por área).
-- Hollow Horn é tratada como ilha comum da Área 2.
-- "Reino Majiatsuka (área 2)" foi removido da lista da Área 1 (aparece só na Área 2).
-- Nomes das ilhas principais (Dressrosa, Wano, Elbaph, Laugh Tale) foram adicionados por conta própria; não estavam nas listas.
+A posição das bolhas (`BOLHAS` no topo do arquivo) é na imagem original de 700x667. Se trocar a imagem de base, ajuste esses valores e apague as agulhas dela antes.
