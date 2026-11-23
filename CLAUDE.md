@@ -7,7 +7,7 @@ Detalhes ficam em `docs/` — leia só o que for relevante à tarefa:
 - `docs/ARQUITETURA.md` — mapa de arquivos, banco de dados, fluxo do jornal.
 - `docs/REGRAS_JORNAL.md` — como o boletim é sorteado, /rerrolar_variavel, travas.
 - `docs/REGRAS_SISTEMAS.md` — /procurado, /encontromaritimo, /desafiodasilhas, /exploracao, /ler_poneglyph.
-- `docs/REGRAS_NAVEGACAO.md` — navegação do Novo Mundo (Log Pose 3A, Totto Land, Sheets como banco).
+- `docs/REGRAS_NAVEGACAO.md` — navegação do Novo Mundo (Log Pose 3A, Totto Land, PostgreSQL da Discloud).
 - `docs/COMANDOS.md` — lista de todos os slash commands e permissões.
 
 ## Regras de trabalho
@@ -25,7 +25,7 @@ Detalhes ficam em `docs/` — leia só o que for relevante à tarefa:
 - `cogs/` — um arquivo por sistema (jornal, regioes_admin, procurado, encontro, exploracao, permissoes).
 - `regioes_db.py` / `regioes_engine.py` — dados e sorteio do jornal (SQLite `regioes.db`).
 - `cacadas_db.py` — travas de caça e estado da edição oficial (SQLite `cacadas.db`).
-- `navegacao_engine.py` / `navegacao_db.py` / `navegacao_dados.py` — navegação do Novo Mundo (regras puras, Sheets, ilhas de seed).
+- `navegacao_engine.py` / `navegacao_db.py` / `navegacao_dados.py` — navegação do Novo Mundo (regras puras, PostgreSQL via `DATABASE_URL` ou Sheets, ilhas de seed).
 - `database.py` — integração com a planilha Google "Procurados Blues" (aba "Procurados").
 
 ## Permissões

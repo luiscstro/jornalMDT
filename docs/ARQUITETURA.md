@@ -15,12 +15,12 @@
 | `regioes_engine.py` | Gera o estado do boletim (`gerar_estado_regiao`), renderiza texto, rerrola uma variável, reconstrói estado de mensagem postada. |
 | `cacadas_db.py` | Travas de caça (14 dias), `jornal_atual`, `edicao_atual` (estado JSON por região). |
 | `database.py` | Lê/escreve a planilha Google via gspread (`credenciais.json`). `obter_planilha()` é compartilhada com a navegação. |
-| `cogs/navegacao.py` | Comandos da navegação do Novo Mundo. Regras em `navegacao_engine.py`, Sheets em `navegacao_db.py`, ilhas de seed em `navegacao_dados.py`. Ver `REGRAS_NAVEGACAO.md`. |
+| `cogs/navegacao.py` | Comandos da navegação do Novo Mundo. Regras em `navegacao_engine.py`, PostgreSQL/Sheets em `navegacao_db.py`, ilhas de seed em `navegacao_dados.py`. Ver `REGRAS_NAVEGACAO.md`. |
 | `image-1.png` | Imagem anexada a cada boletim enviado. |
 
 ## Bancos
 
-- Navegação do Novo Mundo: abas `NM_Ilhas`, `NM_Bandos`, `NM_Log` na planilha Google (persistente; ver `REGRAS_NAVEGACAO.md`).
+- Navegação do Novo Mundo: PostgreSQL da Discloud (`DATABASE_URL`), com Google Sheets como reserva. Tabelas `nm_ilhas`, `nm_bandos`, `nm_log` (ver `REGRAS_NAVEGACAO.md`).
 - `regioes.db` — configuração do jornal (criado automaticamente, semeado com East/South/North/West Blue e Paradise).
 - `cacadas.db` — caçadas ativas, nomes da edição atual, estado para rerrolar.
 - Ambos são SQLite, ignorados pelo git (`*.db`).
