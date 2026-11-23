@@ -66,6 +66,7 @@ def novo_estado(bando: str, ilha_inicial: str) -> dict:
         "totto_ressinc_em": None,
         "totto_saiu": False,
         "agulhas": [],
+        "sync_id": 0,
         "visitadas": [ilha_inicial],
         "secretas": [],
         "calm": [],
@@ -134,6 +135,7 @@ def sincronizar(estado: dict, ilhas: list, rng=random, agora=None, forcar: bool 
     Levanta ErroRegra se não for possível."""
     agora = agora or _agora()
     e = copy.deepcopy(estado)
+    e["sync_id"] = estado.get("sync_id", 0) + 1  # invalida botões de sincronizações antigas
 
     if e["fim"]:
         raise ErroRegra("Esse bando já chegou em **Laugh Tale**. A jornada acabou! 🏴‍☠️")
@@ -142,7 +144,7 @@ def sincronizar(estado: dict, ilhas: list, rng=random, agora=None, forcar: bool 
         liberado = datetime.datetime.fromisoformat(e["totto_ressinc_em"])
         if agora < liberado:
             raise ErroRegra(
-                f"As agulhas estão apontando pra **Totto Land**. O bando pode ir pra lá (`/viajar`) "
+                f"As agulhas estão apontando pra **Totto Land**. O bando pode ir pra lá (botões da mensagem do `/navegar`) "
                 f"ou esperar pra ressincronizar: <t:{int(liberado.timestamp())}:R>."
             )
 
@@ -157,7 +159,7 @@ def sincronizar(estado: dict, ilhas: list, rng=random, agora=None, forcar: bool 
             raise ErroRegra(
                 "Não há ilhas de Totto Land disponíveis pra sincronizar (cadastre na aba **NM_Ilhas** "
                 "com tipo `totto_ilha`, ou todas já foram visitadas). Se tiver "
-                f"{PROGRESSOES_SAIR_TOTTO} progressões, use `/totto_sair`."
+                f"{PROGRESSOES_SAIR_TOTTO} progressões, use o painel `/navegacao` pra sair de Totto Land."
             )
         escolhidas = _sortear_sem_repeticao(candidatos, 3, rng)
         e["agulhas"] = [_agulha(i, "E") for i in escolhidas]
@@ -284,3 +286,41 @@ def sair_totto(estado: dict) -> dict:
 
 def formatar_prog(valor: float) -> str:
     return str(int(valor)) if float(valor).is_integer() else f"{valor:.1f}"
+
+
+# ---------------------------------------------------------------------------
+# Ilhas visitadas (pro painel)
+# ---------------------------------------------------------------------------
+
+def resumo_visitadas(estado: dict, ilhas: list) -> list:
+    """[(rótulo, [nomes na ordem da viagem], total_na_categoria)] — só categorias com algo
+    visitado ou com total > 0. Ilhas que não existem mais no banco vão em "Outras"."""
+    por_nome = {_chave(i["nome"]): i for i in ilhas}
+    comuns = ("inicial", "sincronizavel", "principal")
+    grupos = {}
+    outras = []
+    for nome in estado["visitadas"]:
+        ilha = por_nome.get(_chave(nome))
+        if ilha is None:
+            outras.append(nome)
+        elif ilha["tipo"] == "totto_ilha":
+            grupos.setdefault("Totto Land", []).append(nome)
+        elif isinstance(ilha["area"], int):
+            grupos.setdefault(f"Área {ilha['area']}", []).append(nome)
+        else:
+            outras.append(nome)
+
+    resultado = []
+    for area in (1, 2, 3, 4):
+        total = sum(1 for i in ilhas if i["area"] == area and i["tipo"] in comuns)
+        rotulo = f"Área {area}"
+        if grupos.get(rotulo) or total:
+            resultado.append((rotulo, grupos.get(rotulo, []), total))
+    total_totto = sum(1 for i in ilhas if i["tipo"] == "totto_ilha")
+    if grupos.get("Totto Land") or total_totto:
+        resultado.append(("Totto Land", grupos.get("Totto Land", []), total_totto))
+    resultado.append(("Ilhas Secretas", list(estado["secretas"]), sum(1 for i in ilhas if i["tipo"] == "secreta")))
+    resultado.append(("Calm Belt", list(estado["calm"]), sum(1 for i in ilhas if i["tipo"] == "calm")))
+    if outras:
+        resultado.append(("Outras", outras, len(outras)))
+    return resultado

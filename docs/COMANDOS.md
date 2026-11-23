@@ -46,15 +46,10 @@ Todos exigem cargo permitido, exceto onde indicado.
 
 | Comando | O que faz |
 |---|---|
-| `/navegacao_iniciar bando ilha` | Cria o bando (Raijin, Risky Red ou Mystoria). |
-| `/navegar bando [forcar]` | Sincroniza o Log Pose 3A (3 ilhas + tipo de agulha). |
-| `/viajar bando agulha resultado` | Aplica sucesso/falha do Teste de Navegação. |
-| `/totto_sair bando` | Sai de Totto Land (5 progressões lá dentro). |
-| `/navegacao_status bando` | Situação do bando (efêmero). |
-| `/navegacao_ajustar bando ...` | Mestre: corrige área, progressão, local (efêmero). |
-| `/navegacao_ilha_adicionar nome tipo area [nota]` | Mestre: cadastra ilha (ex: Totto Land). |
-| `/navegacao_ilha_remover nome` | Mestre: remove ilha. |
-| `/navegacao_banco` | Mostra o backend em uso e testa a conexão. |
+| `/navegar bando [forcar]` | Sincroniza o Log Pose 3A. A mensagem sai com GIF animado e botões ✅/❌ por agulha. |
+| `/navegacao` | Painel (efêmero) dos staffs: bandos, ilhas visitadas, ajustes, Totto Land, cadastro de ilhas. |
+
+Os botões de sucesso/falha são persistentes (sem timeout, sobrevivem a reinício do bot). Tudo que antes eram comandos separados (`/viajar`, `/totto_sair`, `/navegacao_iniciar`, `/navegacao_status`, `/navegacao_ajustar`, `/navegacao_ilha_*`, `/navegacao_banco`) agora está no painel.
 
 Regras: `REGRAS_NAVEGACAO.md`.
 
